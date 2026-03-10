@@ -1,4 +1,4 @@
-# 🎱 FXGL 2D Billard
+# 🎱 FXGL Billard
 
 Ein klassisches 2D-Billardspiel in Top-Down-Perspektive, entwickelt mit **Java** und der **FXGL Game Engine**.
 
