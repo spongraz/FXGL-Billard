@@ -21,9 +21,10 @@ public class BillardBallFactory implements EntityFactory {
         boolean striped = data.get("striped");
 
         // Schwarzer Rand
-        Circle outline = new Circle(16, Color.BLACK);
+        Circle outline = new Circle(12, Color.BLACK);
+        //TODO: ballgröße anpassen
 
-        Circle base = new Circle(15);
+        Circle base = new Circle(11);
         // Weiße Kugel ist weiß
         if (number == 0) {
             base.setFill(Color.WHITE);
@@ -37,12 +38,12 @@ public class BillardBallFactory implements EntityFactory {
         //  Halbe Kugeln
         if (striped) {
 
-            Circle stripe = new Circle(15);
+            Circle stripe = new Circle(11);
             stripe.setFill(color);
 
             // Rechteck als Maske
             // Breite 30 (Durchmesser der Kugel (damits bis zum Rand geht)), Höhe 16 (ca. Hälfte der Kugel)
-            Rectangle mask = new Rectangle(30, 16);
+            Rectangle mask = new Rectangle(24, 16);
 
             // Das StackPane zentriert auf 0/0. Daher muss die Maske um die Hälfte der Breite und Höhe verschoben werden, damit sie die obere Hälfte der Kugel abdeckt.
             mask.setTranslateX(-15);

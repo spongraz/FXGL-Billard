@@ -4,8 +4,11 @@ import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.SpawnData;
+import com.almasb.fxgl.input.UserAction;
+import javafx.scene.input.MouseButton;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 
 import static com.almasb.fxgl.dsl.FXGLForKtKt.*;
@@ -19,7 +22,6 @@ public class BillardApp extends GameApplication
                 settings.setTitle("Billard Simulator");
                 settings.setMainMenuEnabled(true);
               //  settings.setAppIcon("icon.png"); Geht nicht.
-
         }
         @Override
         protected void initGame()
@@ -27,34 +29,55 @@ public class BillardApp extends GameApplication
                 FXGL.getGameWorld().addEntityFactory(new BillardBallFactory());
                 FXGL.getGameScene().setBackgroundColor(Color.GREY);
 
-                double appW = getAppWidth();
-                double appH = getAppHeight();
-
-                double tableW = appW * 0.8;
-                double tableH = appH * 0.7;
-
-                double x = (appW - tableW) / 2.0;
-                double y = (appH - tableH) / 2.0;
+                TableLayout layout = TableLayout.fromAppSize(getAppWidth(), getAppHeight());
 
                 //Tisch spawnen
-                Rectangle table = new Rectangle(tableW, tableH);
+                Rectangle table = new Rectangle(layout.getTableW(), layout.getTableH());
                 table.setFill(Color.DARKGREEN);
-                table.setArcWidth(30);
-                table.setArcHeight(30);
+                table.setArcWidth(35);
+                table.setArcHeight(35);
                 table.setStroke(Color.SADDLEBROWN);
-                table.setStrokeWidth(25);
+                table.setStrokeWidth(30);
 
-                FXGL.entityBuilder() //Dass Tisch unter den Kugeln ist.
-                        .at(x, y)
+
+                FXGL.entityBuilder()
+                        .at(layout.getTableX(), layout.getTableY())
                         .view(table)
-                        .zIndex(-10)
+                        .zIndex(-10)    //Dass Tisch unter den Kugeln ist.
                         .buildAndAttach();
 
                 spawnBalls();
-                spawnPockets();
-
+                spawnPockets(layout);
         }
-        private void spawnBalls() {
+
+        @Override
+        protected void initInput()
+        {
+                getInput().addAction(new UserAction("LMB") {
+                        private double x;
+                        private double y;
+
+                        @Override
+                        protected void onActionBegin() {
+                               x = getInput().getMouseXWorld();
+                               y = getInput().getMouseYWorld();
+                        }
+
+                        @Override
+                        protected void onActionEnd() {
+                                // Schießen nach loslassen
+                        }
+
+                }, MouseButton.PRIMARY);
+        }
+//        @Override
+//        protected void initUI() {
+//                Image img = new Image(getClass().getResourceAsStream("/assets/ui/cursors/cursor.png"));
+//                getGameScene().getRoot().getScene().setCursor(new ImageCursor(img, 0, 0));
+//        } // Versuch, Cursor zu ändern, geht nicht
+
+        private void spawnBalls()
+        {
 
                 double startX = 450;   // Position des Racks
                 double startY = 300;
@@ -70,7 +93,7 @@ public class BillardApp extends GameApplication
                         Color.PURPLE,
                         Color.ORANGE,
                         Color.GREEN,
-                        Color.SADDLEBROWN //Normal Brown is rot, deswegen Saddlebrown
+                        Color.SADDLEBROWN
                 };
 
                 int colorIndex = 0;
@@ -122,87 +145,37 @@ public class BillardApp extends GameApplication
                                 .put("color", Color.WHITE)
                                 .put("striped", false)
                 );
-
-
         }
-        public void spawnPockets()
-        {
-                double appW = getAppWidth();
-                double appH = getAppHeight();
+        public void spawnPockets(TableLayout layout) {
+                double r = layout.getPocketRadius();
 
-                double tableW = appW * 0.8;
-                double tableH = appH * 0.7;
+                for (double[] center : layout.getPocketCenters()) {
+                        Circle pocket = new Circle(r, Color.BLACK);
 
-                double tableX = (appW - tableW) / 2.0;
-                double tableY = (appH - tableH) / 2.0;
+                        // entityBuilder().at() will die obere linke Ecke vom View,
+                        // deswegen um r verschieben.
+                        FXGL.entityBuilder()
+                                .at(center[0] - r, center[1] - r)
+                                .view(pocket)
+                                .zIndex(-5)   // über Tisch (-10), aber unter Banden (-8) und Kugeln
+                                .buildAndAttach();
+                }
 
-                double r = 20;
+                spawnCushions(layout);
+        }
+        private void spawnCushions(TableLayout layout) {
+                for (TableLayout.CushionData cushion : layout.getCushions()) {
+                        Polygon poly = new Polygon(cushion.points);
+                        poly.setFill(Color.GREEN);
+                        poly.setStroke(Color.DARKGREEN);
+                        poly.setStrokeWidth(1.5);
 
-
-                double[][] positions = {
-                        { tableX+ r*2,              tableY  + r*2        },   // oben links
-                        { tableX + tableW / 2, tableY   + r*2       },   // oben Mitte
-                        { tableX + tableW,     tableY  +r * 2       },   // oben rechts
-                        { tableX + r*2,              tableY + tableH },   // unten links
-                        { tableX + tableW / 2, tableY + tableH },   // unten Mitte
-                        { tableX + tableW,     tableY + tableH }    // unten rechts
-                };
-
-            for (double[] position : positions) {
-                Circle pocket = new Circle(r, Color.BLACK);
-
-                FXGL.entityBuilder()
-                        .at(position[0] - r, position[1] - r)
-                        .view(pocket)
-                        .zIndex(-5)
-                        .buildAndAttach();
-            }
-/*
-Cushion-Winkel bei einem Poolbillardtisch
-
-=== 1) Eck-Pockets (Corner Pockets) — Anzahl: 4 ===
-
-Jede Ecktasche wird von zwei kurzen Cushion-Enden gebildet,
-die symmetrisch nach innen zeigen.
-
-Gesamtöffnungswinkel: ~142°
-
-Da die Ecke einen 90°-Winkel hat, berechnet sich der
-Cushion-Winkel pro Seite so:
-  (180° - 142°) / 2 = 19° pro Seite
-
-→ Jedes Cushion-Ende ist um 19° gegenüber der Bandenlinie
-  nach innen geneigt.
-
-
-=== 2) Seiten-Pockets (Side Pockets) — Anzahl: 2 ===
-
-Die Mitteltaschen liegen an den langen Seiten des Tisches.
-Beide Cushion-Enden zeigen entlang der geraden Längsbande
-aufeinander zu.
-
-Gesamtöffnungswinkel: ~104°
-
-Der Winkel pro Seite ergibt sich aus dem Supplementärwinkel
-zur geraden Bandenlinie (180°):
-  (180° - 104°) / 2 = 38° pro Seite
-
-→ Jedes Cushion-Ende ist um 38° gegenüber der Bandenlinie
-  nach innen geneigt.
-
-
-=== Übersicht ===
-
-  Pocket-Typ  | Öffnungswinkel | Winkel pro Seite
-  ------------|----------------|------------------
-  Corner      |    ~142°       |      ~19°
-  Side        |    ~104°       |      ~38°
-
-TODO: Cushions hinzufügen.
-*/
-
-
-
+                        FXGL.entityBuilder()
+                                .at(0, 0)
+                                .view(poly)
+                                .zIndex(-8)
+                                .buildAndAttach();
+                }
         }
         public static void main(String[] args) {
                 launch(args);
